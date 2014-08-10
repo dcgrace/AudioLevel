@@ -1,0 +1,15 @@
+/TestBench
+/ipch
+bin
+obj
+x32*
+x64*
+Certificate.bat
+*.aps
+*.docstates
+*.exe
+*.opensdf
+*.sdf
+*.suo
+*.txt
+*.user
