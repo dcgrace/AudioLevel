@@ -92,6 +92,8 @@ struct Measure
 		TYPE_PEAK,
 		TYPE_FFT,
 		TYPE_BAND,
+		TYPE_FFTFREQ,
+		TYPE_BANDFREQ,
 		TYPE_FORMAT,
 		TYPE_DEV_STATUS,
 		TYPE_DEV_NAME,
@@ -361,6 +363,8 @@ PLUGIN_EXPORT void Reload (void* data, void* rm, double* maxValue)
 		L"Peak",							// TYPE_PEAK
 		L"FFT",								// TYPE_FFT
 		L"Band",							// TYPE_BAND
+		L"FFTFreq",							// TYPE_FFTFREQ
+		L"BandFreq",						// TYPE_BANDFREQ
 		L"Format",							// TYPE_FORMAT
 		L"DeviceStatus",					// TYPE_DEV_STATUS
 		L"DeviceName",						// TYPE_DEV_NAME
@@ -727,6 +731,24 @@ PLUGIN_EXPORT double Update (void* data)
 			return CLAMP01(parent->m_peak[m->m_channel] * parent->m_gainPeak);
 		}
 		break;
+	case Measure::TYPE_FFT:
+		if(parent->m_clCapture && parent->m_fftSize) {
+			double	x;
+			const int iFFT	= m->m_fftIdx;
+			if(m->m_channel == Measure::CHANNEL_SUM) {
+				if(parent->m_wfx->nChannels >= 2) {
+					x		= (parent->m_fftOut[0][iFFT] + parent->m_fftOut[1][iFFT]) * 0.5;
+				} else {
+					x		= parent->m_fftOut[0][iFFT];
+				}
+			} else if(m->m_channel < parent->m_wfx->nChannels) {
+				x			= parent->m_fftOut[m->m_channel][iFFT];
+			}
+			x				= CLAMP01(x);
+			x				= max(0, 10.0/parent->m_sensitivity*log10(x)+1.0);
+			return x;
+		}
+		break;
 	case Measure::TYPE_BAND:
 		if(parent->m_clCapture && parent->m_nBands) {
 			double	x;
@@ -745,22 +767,22 @@ PLUGIN_EXPORT double Update (void* data)
 			return x;
 		}
 		break;
-	case Measure::TYPE_FFT:
-		if(parent->m_clCapture && parent->m_fftSize) {
-			double	x;
-			const int iFFT	= m->m_fftIdx;
-			if(m->m_channel == Measure::CHANNEL_SUM) {
-				if(parent->m_wfx->nChannels >= 2) {
-					x		= (parent->m_fftOut[0][iFFT] + parent->m_fftOut[1][iFFT]) * 0.5;
-				} else {
-					x		= parent->m_fftOut[0][iFFT];
-				}
-			} else if(m->m_channel < parent->m_wfx->nChannels) {
-				x			= parent->m_fftOut[m->m_channel][iFFT];
-			}
-			x				= CLAMP01(x);
-			x				= max(0, 10.0/parent->m_sensitivity*log10(x)+1.0);
-			return x;
+	case Measure::TYPE_FFTFREQ:
+		if(
+				parent->m_clCapture
+				&& parent->m_fftSize
+				&& (m->m_fftIdx <= (parent->m_fftSize/2))
+		) {
+			return (m->m_fftIdx * m->m_wfx->nSamplesPerSec / parent->m_fftSize);
+		}
+		break;
+	case Measure::TYPE_BANDFREQ:
+		if(
+				parent->m_clCapture
+				&& parent->m_nBands
+				&& (m->m_bandIdx < parent->m_nBands)
+		) {
+			return parent->m_bandFreq[m->m_bandIdx];
 		}
 		break;
 	case Measure::TYPE_DEV_STATUS:
